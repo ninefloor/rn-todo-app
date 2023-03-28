@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,6 +8,7 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  Modal,
 } from 'react-native';
 import { theme } from './colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,6 +21,8 @@ export default function App() {
   const [working, setWorking] = useState(true);
   const [text, setText] = useState('');
   const [todos, setTodos] = useState({});
+  const [editKey, setEditKey] = useState('');
+  const inputRef = useRef(null);
 
   const travel = () => {
     setWorking(false);
@@ -58,12 +61,37 @@ export default function App() {
   };
 
   const addTodo = async () => {
-    if (text === '') return;
+    if (text === '')
+      return Alert.alert('오류', '빈 입력 값은 들어갈 수 없습니다.');
 
-    const newTodos = { ...todos, [Date.now()]: { text, working } };
+    const newTodos = { ...todos, [Date.now()]: { text, working, done: false } };
     setTodos(newTodos);
     saveTodos(newTodos);
     setText('');
+  };
+
+  const editTodo = () => {
+    if (text === '')
+      return Alert.alert('오류', '빈 입력 값은 들어갈 수 없습니다.');
+    const newTodos = { ...todos };
+    newTodos[editKey].text = text;
+    setTodos(newTodos);
+    saveTodos(newTodos);
+    setText('');
+    setEditKey('');
+  };
+
+  const editBtnHandler = (key) => {
+    setEditKey(key);
+    setText(todos[key].text);
+    inputRef.current.focus();
+  };
+
+  const doneTodo = (key) => {
+    const newTodos = { ...todos };
+    newTodos[key].done = !newTodos[key].done;
+    setTodos(newTodos);
+    saveTodos(newTodos);
   };
 
   const deleteTodo = async (key) => {
@@ -91,6 +119,7 @@ export default function App() {
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
+
       <View style={styles.header}>
         <TouchableOpacity onPress={work}>
           <Text
@@ -121,22 +150,56 @@ export default function App() {
           }
           value={text}
           onChangeText={onChangeText}
-          onSubmitEditing={addTodo}
+          onSubmitEditing={editKey.length ? editTodo : addTodo}
           returnKeyType="done"
+          ref={inputRef}
         />
       </View>
       <ScrollView>
         {Object.keys(todos).map((key) =>
           todos[key].working === working ? (
-            <View style={styles.todo} key={key}>
-              <Text style={styles.todoText}>{todos[key].text}</Text>
+            <View
+              style={[styles.todo, key === editKey && styles.todoEdit]}
+              key={key}
+            >
               <TouchableOpacity
                 onPress={() => {
-                  deleteTodo(key);
+                  doneTodo(key);
                 }}
               >
-                <Fontisto name="trash" size={24} color={theme.gray} />
+                <Fontisto
+                  name={
+                    todos[key].done ? 'checkbox-active' : 'checkbox-passive'
+                  }
+                  size={24}
+                  color={todos[key].done ? theme.gray : theme.white}
+                />
               </TouchableOpacity>
+              <Text
+                style={[
+                  styles.todoText,
+                  todos[key].done && styles.todoTextDone,
+                ]}
+              >
+                {todos[key].text}
+              </Text>
+              <View style={styles.todoBtn}>
+                <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() => {
+                    editBtnHandler(key);
+                  }}
+                >
+                  <Fontisto name="eraser" size={24} color={theme.gray} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    deleteTodo(key);
+                  }}
+                >
+                  <Fontisto name="trash" size={24} color={theme.gray} />
+                </TouchableOpacity>
+              </View>
             </View>
           ) : null
         )}
@@ -179,9 +242,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  todoEdit: {
+    backgroundColor: '#888',
+  },
   todoText: {
     color: theme.white,
     fontSize: 18,
     fontWeight: 500,
+  },
+  todoTextDone: {
+    color: theme.gray,
+    textDecorationLine: 'line-through',
+  },
+  todoBtn: {
+    flexDirection: 'row',
+  },
+  editBtn: {
+    marginRight: 5,
   },
 });
