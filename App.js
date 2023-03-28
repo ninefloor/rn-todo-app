@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Fontisto } from '@expo/vector-icons';
 
 const STORAGE_KEY = '@todos';
+const STORAGE_WORK_KEY = '@work';
 
 export default function App() {
   const [working, setWorking] = useState(true);
@@ -22,20 +23,35 @@ export default function App() {
 
   const travel = () => {
     setWorking(false);
+    saveWork(false);
   };
 
   const work = () => {
     setWorking(true);
+    saveWork(true);
   };
 
   const saveTodos = async (toSave) => {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   };
 
+  const saveWork = async (toSave) => {
+    await AsyncStorage.setItem(STORAGE_WORK_KEY, JSON.stringify(toSave));
+  };
+
   const loadTodos = async () => {
     try {
       const s = await AsyncStorage.getItem(STORAGE_KEY);
       setTodos(JSON.parse(s));
+    } catch (error) {
+      console.log(arr);
+    }
+  };
+
+  const loadWork = async () => {
+    try {
+      const s = await AsyncStorage.getItem(STORAGE_WORK_KEY);
+      setWorking(JSON.parse(s));
     } catch (error) {
       console.log(arr);
     }
@@ -69,6 +85,7 @@ export default function App() {
 
   useEffect(() => {
     loadTodos();
+    loadWork();
   }, []);
 
   return (
